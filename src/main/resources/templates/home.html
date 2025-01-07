@@ -338,7 +338,7 @@
 
 
   <!-- Survey Modal -->
-  <div class="modal fade" id="surveyModal" tabindex="-1" role="dialog" aria-labelledby="surveyModalLabel" aria-hidden="true">
+  <!-- <div class="modal fade" id="surveyModal" tabindex="-1" role="dialog" aria-labelledby="surveyModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header">
@@ -364,7 +364,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div> -->
 
 
   <!-- Analytics Modal -->
@@ -451,24 +451,24 @@ document.addEventListener("DOMContentLoaded", function() {
     pageViews++;
     localStorage.setItem('pageViews', pageViews.toString());
 
-    function shouldShowSurvey() {
-        if (localStorage.getItem('dontShowSurvey') === 'true' ||
-            localStorage.getItem('surveyTaken') === 'true') {
-            return false;
-        }
+    // function shouldShowSurvey() {
+    //     if (localStorage.getItem('dontShowSurvey') === 'true' ||
+    //         localStorage.getItem('surveyTaken') === 'true') {
+    //         return false;
+    //     }
 
-        // If survey version changed and we hit a threshold, show the survey
-        if (localStorage.getItem('surveyVersion') !== surveyVersion &&
-            viewThresholds.includes(pageViews)) {
-            return true;
-        }
+    //     // If survey version changed and we hit a threshold, show the survey
+    //     if (localStorage.getItem('surveyVersion') !== surveyVersion &&
+    //         viewThresholds.includes(pageViews)) {
+    //         return true;
+    //     }
 
-        return viewThresholds.includes(pageViews);
-    }
+    //     return viewThresholds.includes(pageViews);
+    // }
 
-    if (shouldShowSurvey()) {
-        modal.show();
-    }
+    // if (shouldShowSurvey()) {
+        // modal.show();
+    // }
 
     dontShowAgain.addEventListener('change', function() {
         if (this.checked) {
