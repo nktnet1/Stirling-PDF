@@ -368,7 +368,7 @@
 
 
   <!-- Analytics Modal -->
-  <div class="modal fade" id="analyticsModal" tabindex="-1" role="dialog" aria-labelledby="analyticsModalLabel" aria-hidden="true" th:if="${@analyticsPrompt}">
+  <!-- <div class="modal fade" id="analyticsModal" tabindex="-1" role="dialog" aria-labelledby="analyticsModalLabel" aria-hidden="true" th:if="${@analyticsPrompt}">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header">
@@ -386,12 +386,12 @@
             </div>
       </div>
     </div>
-  </div>
+  </div> -->
 
 
 
   <script th:src="@{'/js/fetch-utils.js'}"></script>
-  <script th:inline="javascript">
+  <!-- <script th:inline="javascript">
 
     /*<![CDATA[*/
     const analyticsPromptBoolean = /*[[${@analyticsPrompt}]]*/ false;
@@ -451,24 +451,24 @@ document.addEventListener("DOMContentLoaded", function() {
     pageViews++;
     localStorage.setItem('pageViews', pageViews.toString());
 
-    // function shouldShowSurvey() {
-    //     if (localStorage.getItem('dontShowSurvey') === 'true' ||
-    //         localStorage.getItem('surveyTaken') === 'true') {
-    //         return false;
-    //     }
+    function shouldShowSurvey() {
+        if (localStorage.getItem('dontShowSurvey') === 'true' ||
+            localStorage.getItem('surveyTaken') === 'true') {
+            return false;
+        }
 
-    //     // If survey version changed and we hit a threshold, show the survey
-    //     if (localStorage.getItem('surveyVersion') !== surveyVersion &&
-    //         viewThresholds.includes(pageViews)) {
-    //         return true;
-    //     }
+        // If survey version changed and we hit a threshold, show the survey
+        if (localStorage.getItem('surveyVersion') !== surveyVersion &&
+            viewThresholds.includes(pageViews)) {
+            return true;
+        }
 
-    //     return viewThresholds.includes(pageViews);
-    // }
+        return viewThresholds.includes(pageViews);
+    }
 
-    // if (shouldShowSurvey()) {
-        // modal.show();
-    // }
+    if (shouldShowSurvey()) {
+        modal.show();
+    }
 
     dontShowAgain.addEventListener('change', function() {
         if (this.checked) {
@@ -490,7 +490,7 @@ document.addEventListener("DOMContentLoaded", function() {
         modal.hide();
       }
     });
-  </script>
+  </script> -->
 
 
 </body>
