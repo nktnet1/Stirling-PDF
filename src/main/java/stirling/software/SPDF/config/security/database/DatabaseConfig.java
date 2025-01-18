@@ -21,7 +21,7 @@ import stirling.software.SPDF.model.provider.UnsupportedProviderException;
 public class DatabaseConfig {
 
     public final String DATASOURCE_DEFAULT_URL;
-            
+
     public static final String DATASOURCE_URL_TEMPLATE = "jdbc:%s://%s:%4d/%s";
     public static final String DEFAULT_DRIVER = "org.h2.Driver";
     public static final String DEFAULT_USERNAME = "sa";
@@ -33,7 +33,11 @@ public class DatabaseConfig {
     public DatabaseConfig(
             ApplicationProperties applicationProperties,
             @Qualifier("runningEE") boolean runningEE) {
-    	DATASOURCE_DEFAULT_URL = "jdbc:h2:file:" + InstallationPathConfig.getConfigPath() + File.separator + "stirling-pdf-DB-2.3.232;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+        DATASOURCE_DEFAULT_URL =
+                "jdbc:h2:file:"
+                        + InstallationPathConfig.getConfigPath()
+                        + File.separator
+                        + "stirling-pdf-DB-2.3.232;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
         this.applicationProperties = applicationProperties;
         this.runningEE = runningEE;
     }
