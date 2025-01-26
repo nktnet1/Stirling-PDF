@@ -340,6 +340,7 @@
 
 
   <!-- Survey Modal -->
+  <!--SELFHOST_REMOVAL_OPEN_TAG
   <div class="modal fade" id="surveyModal" tabindex="-1" role="dialog" aria-labelledby="surveyModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -372,9 +373,11 @@
       </div>
     </div>
   </div>
+  SELFHOST_REMOVAL_CLOSE_TAG-->
 
 
   <!-- Analytics Modal -->
+  <!--SELFHOST_REMOVAL_OPEN_TAG
   <div class="modal fade" id="analyticsModal" tabindex="-1" role="dialog" aria-labelledby="analyticsModalLabel"
     aria-hidden="true" th:if="${@analyticsPrompt}">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -401,10 +404,12 @@
       </div>
     </div>
   </div>
+  SELFHOST_REMOVAL_CLOSE_TAG-->
 
 
 
   <script th:src="@{'/js/fetch-utils.js'}"></script>
+  <!--SELFHOST_REMOVAL_OPEN_TAG
   <script th:inline="javascript">
 
     /*<![CDATA[*/
@@ -505,6 +510,7 @@
       }
     });
   </script>
+  SELFHOST_REMOVAL_CLOSE_TAG-->
 
 
 </body>

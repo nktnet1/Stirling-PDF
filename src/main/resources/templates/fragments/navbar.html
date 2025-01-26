@@ -313,7 +313,8 @@
             </a>
           </li>
 
-          <!-- <li class="nav-item">
+          <!--SELFHOST_REMOVAL_OPEN_TAG
+          <li class="nav-item">
             <a class="nav-link" href="#" th:href="@{'/merge-pdfs'}"
               th:classappend="${currentPage}=='merge-pdfs' ? 'active' : ''" th:title="#{home.merge.desc}">
               <span class="material-symbols-rounded">
@@ -321,7 +322,8 @@
               </span>
               <span class="icon-text" th:data-text="#{home.merge.title}" th:text="#{home.merge.title}"></span>
             </a>
-          </li> -->
+          </li>
+          SELFHOST_REMOVAL_CLOSE_TAG-->
 
         </ul>
         <ul class="navbar-nav flex-nowrap">
@@ -385,12 +387,15 @@
             </div>
           </li>
 
+          <!--SELFHOST_REMOVAL_OPEN_TAG
           <li class="nav-item" th:if="${!@runningEE}">
             <a href="https://stirlingpdf.com/pricing" class="nav-link go-pro-link" target="_blank"
               rel="noopener noreferrer">
               <span class="go-pro-badge" th:text="#{enterpriseEdition.button}"></span>
             </a>
           </li>
+          SELFHOST_REMOVAL_CLOSE_TAG-->
+
           <li class="nav-item">
             <!-- Settings Button -->
             <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#settingsModal"
