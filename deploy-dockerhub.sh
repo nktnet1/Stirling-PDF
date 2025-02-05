@@ -2,6 +2,7 @@
 
 if [ -z "$1" ]; then
   echo "Error: VERSION_TAG is required as the first argument."
+  echo "   e.g. $0 0.40.2"
   exit 1
 fi
 
