@@ -1,3 +1,11 @@
+> [!Important]
+> This fork of Stirling-PDF removes brandings, surveys and analytics.
+> You can read more about the discussion here:
+> - https://github.com/Stirling-Tools/Stirling-PDF/discussions/2098#discussioncomment-11757499
+>
+> The docker image for this fork is available at:
+> - https://hub.docker.com/r/nktnet/s-pdf
+
 <p align="center"><img src="https://raw.githubusercontent.com/Stirling-Tools/Stirling-PDF/main/docs/stirling.png" width="80"></p>
 <h1 align="center">Stirling-PDF</h1>
 
