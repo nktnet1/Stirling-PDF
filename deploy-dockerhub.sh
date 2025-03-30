@@ -12,12 +12,12 @@ LATEST_TAG="latest-fat"
 
 echo "Building Docker image for version ${VERSION_TAG}..."
 docker build \
-    --no-cache \
-    --pull \
-    --build-arg VERSION_TAG="${VERSION_TAG}" \
-    -t "${HUB}:${VERSION_TAG}" \
-    -t "${HUB}:${LATEST_TAG}" \
-    -f ./Dockerfile.fat .
+  --no-cache \
+  --pull \
+  --build-arg VERSION_TAG="${VERSION_TAG}" \
+  -t "${HUB}:${VERSION_TAG}" \
+  -t "${HUB}:${LATEST_TAG}" \
+  -f ./Dockerfile.fat .
 
 if [ $? -ne 0 ]; then
   echo "Error: Docker build failed."
