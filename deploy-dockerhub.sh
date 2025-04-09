@@ -14,7 +14,6 @@ echo "Building Docker image for version ${VERSION_TAG}..."
 
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  --no-cache \
   --pull \
   --build-arg VERSION_TAG="${VERSION_TAG}" \
   -t "${HUB}:${VERSION_TAG}" \
