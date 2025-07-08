@@ -1,6 +1,7 @@
 /*<![CDATA[*/
 
 document.addEventListener('DOMContentLoaded', function () {
+  /*
   if (window.analyticsPromptBoolean) {
     const analyticsModal = new bootstrap.Modal(document.getElementById('analyticsModal'));
     analyticsModal.show();
@@ -17,8 +18,11 @@ function hideCookieBanner() {
 }
 hideCookieBanner();
   }
+  */
 });
-/*]]>*/function setAnalytics(enabled) {
+
+function setAnalytics(enabled) {
+  /*
   fetchWithCsrf('api/v1/settings/update-enable-analytics', {
     method: 'POST',
     headers: {
@@ -50,6 +54,7 @@ hideCookieBanner();
       console.error('Error updating analytics setting:', error);
       alert('An error occurred while updating the analytics setting. Please try again.');
     });
+    */
 }
 
 updateFavoriteIcons();
@@ -61,6 +66,7 @@ if (defaultView === 'home-legacy') {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  /*
   const surveyVersion = '3.0';
   const modal = new bootstrap.Modal(document.getElementById('surveyModal'));
   const dontShowAgain = document.getElementById('dontShowAgain');
@@ -125,6 +131,7 @@ if (takeSurveyButton) {
     }
   }
   updateFavoritesDropdown();
+  */
 });
 function setAsDefault(value) {
   localStorage.setItem('defaultView', value);
