@@ -5,6 +5,7 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.core.io.Resource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,6 +28,7 @@ import stirling.software.common.model.ApplicationProperties;
 import stirling.software.common.model.ApplicationProperties.Security.OAUTH2;
 import stirling.software.common.model.ApplicationProperties.Security.SAML2;
 import stirling.software.common.model.oauth2.KeycloakProvider;
+import stirling.software.common.util.RegexPatternUtils;
 import stirling.software.common.util.UrlUtils;
 import stirling.software.proprietary.audit.AuditEventType;
 import stirling.software.proprietary.audit.AuditLevel;
@@ -144,7 +146,7 @@ public class CustomLogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
         registrationId = oAuthToken.getAuthorizedClientRegistrationId();
 
         // Redirect based on OAuth2 provider
-        switch (registrationId.toLowerCase()) {
+        switch (registrationId.toLowerCase(Locale.ROOT)) {
             case "keycloak" -> {
                 KeycloakProvider keycloak = oauth.getClient().getKeycloak();
 
@@ -250,6 +252,9 @@ public class CustomLogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
      * @return a sanitised <code>String</code>
      */
     private String sanitizeInput(String input) {
-        return input.replaceAll("[^a-zA-Z0-9 ]", "");
+        return RegexPatternUtils.getInstance()
+                .getInputSanitizePattern()
+                .matcher(input)
+                .replaceAll("");
     }
 }

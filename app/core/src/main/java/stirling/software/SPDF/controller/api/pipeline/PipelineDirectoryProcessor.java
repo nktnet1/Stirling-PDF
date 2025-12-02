@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -115,7 +116,7 @@ public class PipelineDirectoryProcessor {
         log.info("Handling directory: {}", dir);
         Path processingDir = createProcessingDirectory(dir);
         Optional<Path> jsonFileOptional = findJsonFile(dir);
-        if (!jsonFileOptional.isPresent()) {
+        if (jsonFileOptional.isEmpty()) {
             log.warn("No .JSON settings file found. No processing will happen for dir {}.", dir);
             return;
         }
@@ -150,7 +151,7 @@ public class PipelineDirectoryProcessor {
         for (PipelineOperation operation : config.getOperations()) {
             validateOperation(operation);
             File[] files = collectFilesForProcessing(dir, jsonFile, operation);
-            if (files == null || files.length == 0) {
+            if (files.length == 0) {
                 log.debug("No files detected for {} ", dir);
                 return;
             }
@@ -203,7 +204,7 @@ public class PipelineDirectoryProcessor {
                                                         ? filename.substring(
                                                                         filename.lastIndexOf(".")
                                                                                 + 1)
-                                                                .toLowerCase()
+                                                                .toLowerCase(Locale.ROOT)
                                                         : "";
 
                                         // Check against allowed extensions
@@ -213,7 +214,8 @@ public class PipelineDirectoryProcessor {
                                                                 extension.toLowerCase());
                                         if (!isAllowed) {
                                             log.info(
-                                                    "Skipping file with unsupported extension: {} ({})",
+                                                    "Skipping file with unsupported extension: {}"
+                                                            + " ({})",
                                                     filename,
                                                     extension);
                                         }
@@ -226,7 +228,8 @@ public class PipelineDirectoryProcessor {
                                                 fileMonitor.isFileReadyForProcessing(path);
                                         if (!isReady) {
                                             log.info(
-                                                    "File not ready for processing (locked/created last 5s): {}",
+                                                    "File not ready for processing (locked/created"
+                                                            + " last 5s): {}",
                                                     path);
                                         }
                                         return isReady;

@@ -1,7 +1,9 @@
 package stirling.software.common.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -10,7 +12,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
@@ -88,7 +89,7 @@ class JobExecutorServiceTest {
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody() instanceof JobResponse);
+        assertInstanceOf(JobResponse.class, response.getBody());
         JobResponse<?> jobResponse = (JobResponse<?>) response.getBody();
         assertTrue(jobResponse.isAsync());
         assertNotNull(jobResponse.getJobId());
@@ -105,19 +106,16 @@ class JobExecutorServiceTest {
                     throw new RuntimeException("Test error");
                 };
 
-        // When
-        ResponseEntity<?> response = jobExecutorService.runJobGeneric(false, work);
-
-        // Then
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-
-        @SuppressWarnings("unchecked")
-        Map<String, String> errorMap = (Map<String, String>) response.getBody();
-        assertEquals("Job failed: Test error", errorMap.get("error"));
+        // When/Then - Exception should propagate to GlobalExceptionHandler
+        RuntimeException thrown =
+                assertThrows(
+                        RuntimeException.class,
+                        () -> jobExecutorService.runJobGeneric(false, work));
+        assertEquals("Test error", thrown.getMessage());
     }
 
     @Test
-    void shouldQueueJobWhenResourcesLimited() {
+    void shouldQueueJobWhenResourcesLimited() throws Exception {
         // Given
         Supplier<Object> work = () -> "test-result";
         CompletableFuture<ResponseEntity<?>> future = new CompletableFuture<>();
@@ -133,7 +131,7 @@ class JobExecutorServiceTest {
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody() instanceof JobResponse);
+        assertInstanceOf(JobResponse.class, response.getBody());
 
         // Verify job was queued
         verify(jobQueue).queueJob(anyString(), eq(80), any(), eq(5000L));
@@ -167,13 +165,13 @@ class JobExecutorServiceTest {
         // Given
         Supplier<Object> work =
                 () -> {
-                    try {
-                        Thread.sleep(100); // Simulate long-running job
-                        return "test-result";
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException(e);
+                    // Simulate long-running job without actual sleep
+                    // Use a loop to consume time instead of Thread.sleep
+                    long startTime = System.nanoTime();
+                    while (System.nanoTime() - startTime < 100_000_000) { // 100ms in nanoseconds
+                        // Busy wait to simulate work without Thread.sleep
                     }
+                    return "test-result";
                 };
 
         // Use reflection to access the private executeWithTimeout method
@@ -186,7 +184,7 @@ class JobExecutorServiceTest {
         try {
             executeMethod.invoke(jobExecutorService, work, 1L); // Very short timeout
         } catch (Exception e) {
-            assertTrue(e.getCause() instanceof TimeoutException);
+            assertInstanceOf(TimeoutException.class, e.getCause());
         }
     }
 }

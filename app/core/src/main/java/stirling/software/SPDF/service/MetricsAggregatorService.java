@@ -1,6 +1,7 @@
 package stirling.software.SPDF.service;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,7 +30,7 @@ public class MetricsAggregatorService {
     public void aggregateAndSendMetrics() {
         Map<String, Object> metrics = new HashMap<>();
 
-        final boolean validateGetEndpoints = endpointInspector.getValidGetEndpoints().size() != 0;
+        final boolean validateGetEndpoints = !endpointInspector.getValidGetEndpoints().isEmpty();
         Search.in(meterRegistry)
                 .name("http.requests")
                 .counters()
@@ -70,7 +71,10 @@ public class MetricsAggregatorService {
 
                             String key =
                                     String.format(
-                                            "http_requests_%s_%s", method, uri.replace("/", "_"));
+                                            Locale.ROOT,
+                                            "http_requests_%s_%s",
+                                            method,
+                                            uri.replace("/", "_"));
                             double currentCount = counter.count();
                             double lastCount = lastSentMetrics.getOrDefault(key, 0.0);
                             double difference = currentCount - lastCount;

@@ -26,7 +26,7 @@ public class CustomHtmlSanitizer {
             new AttributePolicy() {
                 @Override
                 public String apply(String elementName, String attributeName, String value) {
-                    if (value == null || value.trim().isEmpty()) {
+                    if (value.trim().isEmpty()) {
                         return null;
                     }
 
@@ -62,8 +62,7 @@ public class CustomHtmlSanitizer {
                     .and(new HtmlPolicyBuilder().disallowElements("noscript").toFactory());
 
     public String sanitize(String html) {
-        boolean disableSanitize =
-                Boolean.TRUE.equals(applicationProperties.getSystem().getDisableSanitize());
+        boolean disableSanitize = applicationProperties.getSystem().isDisableSanitize();
         return disableSanitize ? html : POLICY.sanitize(html);
     }
 }

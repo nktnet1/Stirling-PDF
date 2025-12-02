@@ -41,9 +41,15 @@
                   </select>
 
                   <div class="form-check mt-3">
-                    <input class="form-check-input" type="checkbox" name="grayscale" id="grayscaleCheck" value="true">
-                    <label class="form-check-label" for="grayscaleCheck" th:text="#{compress.grayscale.label}">
+                    <input id="grayscaleCheck" name="grayscale" type="checkbox" value="true">
+                    <label for="grayscaleCheck" th:text="#{compress.grayscale.label}">
                         Convert images to grayscale for better compression
+                    </label>
+                </div>
+                  <div class="form-check mt-3">
+                    <input id="linearizeCheck" name="linearize" type="checkbox" value="true">
+                    <label for="linearizeCheck" th:text="#{compress.linearize.label}">
+                        Linearize PDF for faster web viewing
                     </label>
                 </div>
                 </div>

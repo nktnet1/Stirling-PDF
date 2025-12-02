@@ -257,9 +257,14 @@ public class EndpointConfiguration {
         addEndpointToGroup("Convert", "html-to-pdf");
         addEndpointToGroup("Convert", "url-to-pdf");
         addEndpointToGroup("Convert", "markdown-to-pdf");
+        addEndpointToGroup("Convert", "ebook-to-pdf");
+        addEndpointToGroup("Convert", "pdf-to-epub");
         addEndpointToGroup("Convert", "pdf-to-csv");
         addEndpointToGroup("Convert", "pdf-to-markdown");
         addEndpointToGroup("Convert", "eml-to-pdf");
+        addEndpointToGroup("Convert", "pdf-to-vector");
+        addEndpointToGroup("Convert", "vector-to-pdf");
+        addEndpointToGroup("Convert", "pdf-to-video");
 
         // Adding endpoints to "Security" group
         addEndpointToGroup("Security", "add-password");
@@ -373,6 +378,8 @@ public class EndpointConfiguration {
         addEndpointToGroup("Java", "extract-page");
         addEndpointToGroup("Java", "pdf-to-single-page");
         addEndpointToGroup("Java", "markdown-to-pdf");
+        addEndpointToGroup("Java", "vector-to-pdf");
+        addEndpointToGroup("Java", "pdf-to-vector");
         addEndpointToGroup("Java", "show-javascript");
         addEndpointToGroup("Java", "auto-redact");
         addEndpointToGroup("Java", "redact");
@@ -386,6 +393,8 @@ public class EndpointConfiguration {
         addEndpointToGroup("Java", "pdf-to-markdown");
         addEndpointToGroup("Java", "add-attachments");
         addEndpointToGroup("Java", "compress-pdf");
+        addEndpointToGroup("rar", "pdf-to-cbr");
+        addEndpointToGroup("Java", "pdf-to-video");
 
         // Javascript
         addEndpointToGroup("Javascript", "pdf-organizer");
@@ -400,6 +409,10 @@ public class EndpointConfiguration {
         /* Ghostscript */
         addEndpointToGroup("Ghostscript", "repair");
         addEndpointToGroup("Ghostscript", "compress-pdf");
+        addEndpointToGroup("Ghostscript", "crop");
+        addEndpointToGroup("Ghostscript", "replace-invert-pdf");
+        addEndpointToGroup("Ghostscript", "pdf-to-vector");
+        addEndpointToGroup("Ghostscript", "vector-to-pdf");
 
         /* tesseract */
         addEndpointToGroup("tesseract", "ocr-pdf");
@@ -435,9 +448,16 @@ public class EndpointConfiguration {
         addEndpointToGroup("Weasyprint", "markdown-to-pdf");
         addEndpointToGroup("Weasyprint", "eml-to-pdf");
 
+        // Calibre dependent endpoints
+        addEndpointToGroup("Calibre", "ebook-to-pdf");
+        addEndpointToGroup("Calibre", "pdf-to-epub");
+
         // Pdftohtml dependent endpoints
         addEndpointToGroup("Pdftohtml", "pdf-to-html");
         addEndpointToGroup("Pdftohtml", "pdf-to-markdown");
+
+        // FFmpeg dependent endpoints
+        addEndpointToGroup("FFmpeg", "pdf-to-video");
     }
 
     private void processEnvironmentConfigs() {
@@ -461,7 +481,7 @@ public class EndpointConfiguration {
             disableGroup("enterprise");
         }
 
-        if (!applicationProperties.getSystem().getEnableUrlToPDF()) {
+        if (!applicationProperties.getSystem().isEnableUrlToPDF()) {
             disableEndpoint("url-to-pdf");
         }
     }
@@ -483,7 +503,10 @@ public class EndpointConfiguration {
                 || "Java".equals(group)
                 || "Javascript".equals(group)
                 || "Weasyprint".equals(group)
-                || "Pdftohtml".equals(group);
+                || "Pdftohtml".equals(group)
+                || "Calibre".equals(group)
+                || "rar".equals(group)
+                || "FFmpeg".equals(group);
     }
 
     private boolean isEndpointEnabledDirectly(String endpoint) {

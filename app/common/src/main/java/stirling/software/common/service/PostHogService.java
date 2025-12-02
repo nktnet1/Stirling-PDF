@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import com.posthog.java.PostHog;
 
+import stirling.software.common.configuration.RuntimePathConfig;
 import stirling.software.common.model.ApplicationProperties;
 
 @Service
@@ -33,6 +34,7 @@ public class PostHogService {
     private final String uniqueId;
     private final String appVersion;
     private final ApplicationProperties applicationProperties;
+    private final RuntimePathConfig runtimePathConfig;
     private final UserServiceInterface userService;
     private final Environment env;
     private boolean configDirMounted;
@@ -43,12 +45,14 @@ public class PostHogService {
             @Qualifier("configDirMounted") boolean configDirMounted,
             @Qualifier("appVersion") String appVersion,
             ApplicationProperties applicationProperties,
+            RuntimePathConfig runtimePathConfig,
             @Autowired(required = false) UserServiceInterface userService,
             Environment env) {
         this.postHog = postHog;
         this.uniqueId = uuid;
         this.appVersion = appVersion;
         this.applicationProperties = applicationProperties;
+        this.runtimePathConfig = runtimePathConfig;
         this.userService = userService;
         this.env = env;
         this.configDirMounted = configDirMounted;
@@ -56,7 +60,7 @@ public class PostHogService {
     }
 
     private void captureSystemInfo() {
-        if (!applicationProperties.getSystem().isAnalyticsEnabled()) {
+        if (!applicationProperties.getSystem().isPosthogEnabled()) {
             return;
         }
         try {
@@ -67,7 +71,7 @@ public class PostHogService {
     }
 
     public void captureEvent(String eventName, Map<String, Object> properties) {
-        if (!applicationProperties.getSystem().isAnalyticsEnabled()) {
+        if (!applicationProperties.getSystem().isPosthogEnabled()) {
             return;
         }
 
@@ -253,11 +257,11 @@ public class PostHogService {
         addIfNotEmpty(
                 properties,
                 "security_enableLogin",
-                applicationProperties.getSecurity().getEnableLogin());
+                applicationProperties.getSecurity().isEnableLogin());
         addIfNotEmpty(
                 properties,
                 "security_csrfDisabled",
-                applicationProperties.getSecurity().getCsrfDisabled());
+                applicationProperties.getSecurity().isCsrfDisabled());
         addIfNotEmpty(
                 properties,
                 "security_loginAttemptCount",
@@ -302,25 +306,22 @@ public class PostHogService {
         addIfNotEmpty(
                 properties,
                 "system_googlevisibility",
-                applicationProperties.getSystem().getGooglevisibility());
+                applicationProperties.getSystem().isGooglevisibility());
         addIfNotEmpty(
                 properties, "system_showUpdate", applicationProperties.getSystem().isShowUpdate());
         addIfNotEmpty(
                 properties,
                 "system_showUpdateOnlyAdmin",
-                applicationProperties.getSystem().getShowUpdateOnlyAdmin());
+                applicationProperties.getSystem().isShowUpdateOnlyAdmin());
         addIfNotEmpty(
                 properties,
                 "system_customHTMLFiles",
                 applicationProperties.getSystem().isCustomHTMLFiles());
-        addIfNotEmpty(
-                properties,
-                "system_tessdataDir",
-                applicationProperties.getSystem().getTessdataDir());
+        addIfNotEmpty(properties, "system_tessdataDir", runtimePathConfig.getTessDataPath());
         addIfNotEmpty(
                 properties,
                 "system_enableAlphaFunctionality",
-                applicationProperties.getSystem().getEnableAlphaFunctionality());
+                applicationProperties.getSystem().isEnableAlphaFunctionality());
         addIfNotEmpty(
                 properties,
                 "system_enableAnalytics",
@@ -337,7 +338,7 @@ public class PostHogService {
 
         // Capture Metrics properties
         addIfNotEmpty(
-                properties, "metrics_enabled", applicationProperties.getMetrics().getEnabled());
+                properties, "metrics_enabled", applicationProperties.getMetrics().isEnabled());
 
         // Capture EnterpriseEdition properties
         addIfNotEmpty(
@@ -397,7 +398,7 @@ public class PostHogService {
                 if (hardwareAddress != null) {
                     String[] hexadecimal = new String[hardwareAddress.length];
                     for (int i = 0; i < hardwareAddress.length; i++) {
-                        hexadecimal[i] = String.format("%02X", hardwareAddress[i]);
+                        hexadecimal[i] = String.format(Locale.ROOT, "%02X", hardwareAddress[i]);
                     }
                     return String.join("-", hexadecimal);
                 }

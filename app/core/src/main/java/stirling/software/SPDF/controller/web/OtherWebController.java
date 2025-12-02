@@ -14,16 +14,20 @@ import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+import stirling.software.common.configuration.RuntimePathConfig;
 import stirling.software.common.model.ApplicationProperties;
 import stirling.software.common.util.CheckProgramInstall;
 
 @Controller
 @Tag(name = "Misc", description = "Miscellaneous APIs")
 @RequiredArgsConstructor
+@Slf4j
 public class OtherWebController {
 
     private final ApplicationProperties applicationProperties;
+    private final RuntimePathConfig runtimePathConfig;
 
     @GetMapping("/compress-pdf")
     @Hidden
@@ -120,7 +124,7 @@ public class OtherWebController {
     }
 
     public List<String> getAvailableTesseractLanguages() {
-        String tessdataDir = applicationProperties.getSystem().getTessdataDir();
+        String tessdataDir = runtimePathConfig.getTessDataPath();
         File[] files = new File(tessdataDir).listFiles();
         if (files == null) {
             return Collections.emptyList();
@@ -197,5 +201,12 @@ public class OtherWebController {
     public String attachmentsForm(Model model) {
         model.addAttribute("currentPage", "add-attachments");
         return "misc/add-attachments";
+    }
+
+    @GetMapping("/extract-attachments")
+    @Hidden
+    public String extractAttachmentsForm(Model model) {
+        model.addAttribute("currentPage", "extract-attachments");
+        return "misc/extract-attachments";
     }
 }

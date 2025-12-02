@@ -1,3 +1,9 @@
+const PDFJS_DEFAULT_OPTIONS = {
+  cMapUrl: pdfjsPath + 'cmaps/',
+  cMapPacked: true,
+  standardFontDataUrl: pdfjsPath + 'standard_fonts/',
+};
+
 window.toggleSignatureView = toggleSignatureView;
 window.previewSignature = previewSignature;
 window.addSignatureFromPreview = addSignatureFromPreview;
@@ -6,6 +12,12 @@ window.addDraggableFromText = addDraggableFromText;
 window.goToFirstOrLastPage = goToFirstOrLastPage;
 
 let currentPreviewSrc = null;
+
+function getSelectedSignatureColor() {
+  const textPicker = document.getElementById('signature-color-text');
+  const drawPicker = document.getElementById('signature-color');
+  return (textPicker && textPicker.value) || (drawPicker && drawPicker.value) || '#000000';
+}
 
 function toggleSignatureView() {
   const gridView = document.getElementById("gridView");
@@ -64,9 +76,11 @@ document
         const file = allFiles[0];
         originalFileName = file.name.replace(/\.[^/.]+$/, "");
         const pdfData = await file.arrayBuffer();
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "./pdfjs-legacy/pdf.worker.mjs";
-        const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsPath + 'pdf.worker.mjs';
+        const pdfDoc = await pdfjsLib.getDocument({
+          ...PDFJS_DEFAULT_OPTIONS,
+          data: pdfData,
+        }).promise;
         await DraggableUtils.renderPage(pdfDoc, 0);
 
         document.querySelectorAll(".show-on-file-selected").forEach((el) => {
@@ -242,8 +256,18 @@ const signaturePadCanvas = document.getElementById("drawing-pad-canvas");
 const signaturePad = new SignaturePad(signaturePadCanvas, {
   minWidth: 1,
   maxWidth: 2,
-  penColor: "black",
+  penColor: "#000000",
 });
+
+// Keep pad color in sync if draw picker exists
+(function initPadColorSync() {
+  const drawPicker = document.getElementById('signature-color');
+  if (!drawPicker) return;
+  if (drawPicker.value) signaturePad.penColor = drawPicker.value;
+  drawPicker.addEventListener('input', () => {
+    signaturePad.penColor = drawPicker.value || '#000000';
+  });
+})();
 
 function addDraggableFromPad() {
   if (signaturePad.isEmpty()) return;
@@ -328,6 +352,7 @@ function addDraggableFromText() {
   const sigText = document.getElementById("sigText").value;
   const font = document.querySelector("select[name=font]").value;
   const fontSize = 100;
+  const color = getSelectedSignatureColor();
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -340,6 +365,7 @@ function addDraggableFromText() {
   canvas.width = textWidth;
   canvas.height = paragraphs.length * textHeight * 1.35; // for tails
   ctx.font = `${fontSize}px ${font}`;
+  ctx.fillStyle = color;
 
   ctx.textBaseline = "top";
 

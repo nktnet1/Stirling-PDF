@@ -25,14 +25,25 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import io.github.pixee.security.Filenames;
 
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import stirling.software.common.configuration.RuntimePathConfig;
 import stirling.software.common.util.ProcessExecutor.ProcessExecutorResult;
 
 @Slf4j
-@NoArgsConstructor
 public class PDFToFile {
+
+    private final TempFileManager tempFileManager;
+    private final RuntimePathConfig runtimePathConfig;
+
+    public PDFToFile(TempFileManager tempFileManager) {
+        this(tempFileManager, null);
+    }
+
+    public PDFToFile(TempFileManager tempFileManager, RuntimePathConfig runtimePathConfig) {
+        this.tempFileManager = tempFileManager;
+        this.runtimePathConfig = runtimePathConfig;
+    }
 
     public ResponseEntity<byte[]> processPdfToMarkdown(MultipartFile inputFile)
             throws IOException, InterruptedException {
@@ -71,15 +82,12 @@ public class PDFToFile {
             pdfBaseName = originalPdfFileName.substring(0, originalPdfFileName.lastIndexOf('.'));
         }
 
-        Path tempInputFile = null;
-        Path tempOutputDir = null;
         byte[] fileBytes;
-        String fileName = "temp.file";
+        String fileName;
 
-        try {
-            tempInputFile = Files.createTempFile("input_", ".pdf");
-            inputFile.transferTo(tempInputFile);
-            tempOutputDir = Files.createTempDirectory("output_");
+        try (TempFile tempInputFile = new TempFile(tempFileManager, ".pdf");
+                TempDirectory tempOutputDir = new TempDirectory(tempFileManager)) {
+            inputFile.transferTo(tempInputFile.getFile());
 
             List<String> command =
                     new ArrayList<>(
@@ -88,14 +96,16 @@ public class PDFToFile {
                                     "-s",
                                     "-noframes",
                                     "-c",
-                                    tempInputFile.toString(),
+                                    tempInputFile.getAbsolutePath(),
                                     pdfBaseName));
 
             ProcessExecutorResult returnCode =
                     ProcessExecutor.getInstance(ProcessExecutor.Processes.PDFTOHTML)
-                            .runCommandWithOutputHandling(command, tempOutputDir.toFile());
+                            .runCommandWithOutputHandling(
+                                    command, tempOutputDir.getPath().toFile());
             // Process HTML files to Markdown
-            File[] outputFiles = Objects.requireNonNull(tempOutputDir.toFile().listFiles());
+            File[] outputFiles =
+                    Objects.requireNonNull(tempOutputDir.getPath().toFile().listFiles());
             List<File> markdownFiles = new ArrayList<>();
 
             // Convert HTML files to Markdown
@@ -105,7 +115,7 @@ public class PDFToFile {
                     String markdown = htmlToMarkdownConverter.convert(html);
 
                     String mdFileName = outputFile.getName().replace(".html", ".md");
-                    File mdFile = new File(tempOutputDir.toFile(), mdFileName);
+                    File mdFile = new File(tempOutputDir.getPath().toFile(), mdFileName);
                     Files.writeString(mdFile.toPath(), markdown);
                     markdownFiles.add(mdFile);
                 }
@@ -142,10 +152,6 @@ public class PDFToFile {
 
                 fileBytes = byteArrayOutputStream.toByteArray();
             }
-
-        } finally {
-            if (tempInputFile != null) Files.deleteIfExists(tempInputFile);
-            if (tempOutputDir != null) FileUtils.deleteDirectory(tempOutputDir.toFile());
         }
         return WebResponseUtils.bytesToWebResponse(
                 fileBytes, fileName, MediaType.APPLICATION_OCTET_STREAM);
@@ -164,18 +170,17 @@ public class PDFToFile {
             pdfBaseName = originalPdfFileName.substring(0, originalPdfFileName.lastIndexOf('.'));
         }
 
-        Path tempInputFile = null;
-        Path tempOutputDir = null;
         byte[] fileBytes;
-        String fileName = "temp.file";
+        String fileName;
 
-        try {
+        try (TempFile inputFileTemp = new TempFile(tempFileManager, ".pdf");
+                TempDirectory outputDirTemp = new TempDirectory(tempFileManager)) {
+
+            Path tempInputFile = inputFileTemp.getPath();
+            Path tempOutputDir = outputDirTemp.getPath();
+
             // Save the uploaded file to a temporary location
-            tempInputFile = Files.createTempFile("input_", ".pdf");
             inputFile.transferTo(tempInputFile);
-
-            // Prepare the output directory
-            tempOutputDir = Files.createTempDirectory("output_");
 
             // Run the pdftohtml command with complex output
             List<String> command =
@@ -208,11 +213,6 @@ public class PDFToFile {
                 log.error("Exception writing zip", e);
             }
             fileBytes = byteArrayOutputStream.toByteArray();
-
-        } finally {
-            // Clean up the temporary files
-            if (tempInputFile != null) Files.deleteIfExists(tempInputFile);
-            if (tempOutputDir != null) FileUtils.deleteDirectory(tempOutputDir.toFile());
         }
 
         return WebResponseUtils.bytesToWebResponse(
@@ -230,7 +230,7 @@ public class PDFToFile {
         // Get the original PDF file name without the extension
         String originalPdfFileName = Filenames.toSimpleFileName(inputFile.getOriginalFilename());
 
-        if (originalPdfFileName == null || "".equals(originalPdfFileName.trim())) {
+        if (originalPdfFileName == null || originalPdfFileName.trim().isEmpty()) {
             originalPdfFileName = "output.pdf";
         }
         // Assume file is pdf if no extension
@@ -245,35 +245,68 @@ public class PDFToFile {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        Path tempInputFile = null;
-        Path tempOutputDir = null;
         byte[] fileBytes;
-        String fileName = "temp.file";
+        String fileName;
 
-        try {
+        Path libreOfficeProfile = null;
+        try (TempFile inputFileTemp = new TempFile(tempFileManager, ".pdf");
+                TempDirectory outputDirTemp = new TempDirectory(tempFileManager)) {
+
+            Path tempInputFile = inputFileTemp.getPath();
+            Path tempOutputDir = outputDirTemp.getPath();
+            Path unoOutputFile =
+                    tempOutputDir.resolve(
+                            pdfBaseName + "." + resolvePrimaryExtension(outputFormat));
+
             // Save the uploaded file to a temporary location
-            tempInputFile = Files.createTempFile("input_", ".pdf");
             inputFile.transferTo(tempInputFile);
 
-            // Prepare the output directory
-            tempOutputDir = Files.createTempDirectory("output_");
-
             // Run the LibreOffice command
-            List<String> command =
-                    new ArrayList<>(
-                            Arrays.asList(
-                                    "soffice",
-                                    "--headless",
-                                    "--nologo",
-                                    "--infilter=" + libreOfficeFilter,
-                                    "--convert-to",
-                                    outputFormat,
-                                    "--outdir",
-                                    tempOutputDir.toString(),
-                                    tempInputFile.toString()));
-            ProcessExecutorResult returnCode =
-                    ProcessExecutor.getInstance(ProcessExecutor.Processes.LIBRE_OFFICE)
-                            .runCommandWithOutputHandling(command);
+            ProcessExecutorResult returnCode = null;
+            IOException unoconvertException = null;
+
+            if (isUnoConvertEnabled()) {
+                try {
+                    List<String> unoCommand =
+                            buildUnoConvertCommand(
+                                    tempInputFile, unoOutputFile, outputFormat, libreOfficeFilter);
+                    returnCode =
+                            ProcessExecutor.getInstance(ProcessExecutor.Processes.LIBRE_OFFICE)
+                                    .runCommandWithOutputHandling(unoCommand);
+                } catch (IOException e) {
+                    unoconvertException = e;
+                    log.warn(
+                            "Unoconvert command failed ({}). Falling back to soffice command.",
+                            e.getMessage());
+                }
+            }
+
+            if (returnCode == null) {
+                // Run the LibreOffice command as a fallback
+                libreOfficeProfile = Files.createTempDirectory("libreoffice_profile_");
+                List<String> command = new ArrayList<>();
+                command.add(runtimePathConfig.getSOfficePath());
+                command.add("-env:UserInstallation=" + libreOfficeProfile.toUri().toString());
+                command.add("--headless");
+                command.add("--nologo");
+                command.add("--infilter=" + libreOfficeFilter);
+                command.add("--convert-to");
+                command.add(outputFormat);
+                command.add("--outdir");
+                command.add(tempOutputDir.toString());
+                command.add(tempInputFile.toString());
+
+                try {
+                    returnCode =
+                            ProcessExecutor.getInstance(ProcessExecutor.Processes.LIBRE_OFFICE)
+                                    .runCommandWithOutputHandling(command);
+                } catch (IOException e) {
+                    if (unoconvertException != null) {
+                        e.addSuppressed(unoconvertException);
+                    }
+                    throw e;
+                }
+            }
 
             // Get output files
             List<File> outputFiles = Arrays.asList(tempOutputDir.toFile().listFiles());
@@ -308,13 +341,42 @@ public class PDFToFile {
 
                 fileBytes = byteArrayOutputStream.toByteArray();
             }
-
         } finally {
-            // Clean up the temporary files
-            Files.deleteIfExists(tempInputFile);
-            if (tempOutputDir != null) FileUtils.deleteDirectory(tempOutputDir.toFile());
+            if (libreOfficeProfile != null) {
+                FileUtils.deleteQuietly(libreOfficeProfile.toFile());
+            }
         }
         return WebResponseUtils.bytesToWebResponse(
                 fileBytes, fileName, MediaType.APPLICATION_OCTET_STREAM);
+    }
+
+    private boolean isUnoConvertEnabled() {
+        return runtimePathConfig != null
+                && runtimePathConfig.getUnoConvertPath() != null
+                && !runtimePathConfig.getUnoConvertPath().isBlank();
+    }
+
+    private List<String> buildUnoConvertCommand(
+            Path inputFile, Path outputFile, String outputFormat, String libreOfficeFilter) {
+        List<String> command = new ArrayList<>();
+        command.add(runtimePathConfig.getUnoConvertPath());
+        command.add("--port");
+        command.add("2003");
+        command.add("--convert-to");
+        command.add(outputFormat);
+        if (libreOfficeFilter != null && !libreOfficeFilter.isBlank()) {
+            command.add("--input-filter=" + libreOfficeFilter);
+        }
+        command.add(inputFile.toString());
+        command.add(outputFile.toString());
+        return command;
+    }
+
+    private String resolvePrimaryExtension(String outputFormat) {
+        if (outputFormat == null) {
+            return "";
+        }
+        int colonIndex = outputFormat.indexOf(':');
+        return colonIndex > 0 ? outputFormat.substring(0, colonIndex) : outputFormat;
     }
 }

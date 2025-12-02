@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -31,7 +32,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import stirling.software.SPDF.model.api.misc.ExtractImageScansRequest;
+import stirling.software.common.model.ApplicationProperties;
 import stirling.software.common.service.CustomPDFDocumentFactory;
+import stirling.software.common.util.ApplicationContextProvider;
 import stirling.software.common.util.CheckProgramInstall;
 import stirling.software.common.util.ExceptionUtils;
 import stirling.software.common.util.GeneralUtils;
@@ -69,7 +72,7 @@ public class ExtractImageScansController {
         List<String> images = new ArrayList<>();
 
         List<Path> tempImageFiles = new ArrayList<>();
-        Path tempInputFile = null;
+        Path tempInputFile;
         Path tempZipFile = null;
         List<Path> tempDirs = new ArrayList<>();
 
@@ -96,7 +99,23 @@ public class ExtractImageScansController {
                         Path tempFile = Files.createTempFile("image_", ".png");
 
                         // Render image and save as temp file
-                        BufferedImage image = pdfRenderer.renderImageWithDPI(i, 300);
+                        BufferedImage image;
+
+                        // Use global maximum DPI setting, fallback to 300 if not set
+                        int renderDpi = 300; // Default fallback
+                        ApplicationProperties properties =
+                                ApplicationContextProvider.getBean(ApplicationProperties.class);
+                        if (properties != null && properties.getSystem() != null) {
+                            renderDpi = properties.getSystem().getMaxDPI();
+                        }
+                        final int dpi = renderDpi;
+                        final int pageIndex = i;
+
+                        image =
+                                ExceptionUtils.handleOomRendering(
+                                        pageIndex + 1,
+                                        dpi,
+                                        () -> pdfRenderer.renderImageWithDPI(pageIndex, dpi));
                         ImageIO.write(image, "png", tempFile.toFile());
 
                         // Add temp file path to images list
@@ -142,7 +161,10 @@ public class ExtractImageScansController {
                                 .runCommandWithOutputHandling(command);
 
                 // Read the output photos in temp directory
-                List<Path> tempOutputFiles = Files.list(tempDir).sorted().toList();
+                List<Path> tempOutputFiles;
+                try (Stream<Path> listStream = Files.list(tempDir)) {
+                    tempOutputFiles = listStream.sorted().toList();
+                }
                 for (Path tempOutputFile : tempOutputFiles) {
                     byte[] imageBytes = Files.readAllBytes(tempOutputFile);
                     processedImageBytes.add(imageBytes);
@@ -154,7 +176,7 @@ public class ExtractImageScansController {
             // Create zip file if multiple images
             if (processedImageBytes.size() > 1) {
                 String outputZipFilename =
-                        fileName.replaceFirst(REPLACEFIRST, "") + "_processed.zip";
+                        GeneralUtils.generateFilename(fileName, "_processed.zip");
                 tempZipFile = Files.createTempFile("output_", ".zip");
 
                 try (ZipOutputStream zipOut =
@@ -163,10 +185,8 @@ public class ExtractImageScansController {
                     for (int i = 0; i < processedImageBytes.size(); i++) {
                         ZipEntry entry =
                                 new ZipEntry(
-                                        fileName.replaceFirst(REPLACEFIRST, "")
-                                                + "_"
-                                                + (i + 1)
-                                                + ".png");
+                                        GeneralUtils.generateFilename(
+                                                fileName, "_processed_" + (i + 1) + ".png"));
                         zipOut.putNextEntry(entry);
                         zipOut.write(processedImageBytes.get(i));
                         zipOut.closeEntry();
@@ -181,15 +201,16 @@ public class ExtractImageScansController {
                 return WebResponseUtils.bytesToWebResponse(
                         zipBytes, outputZipFilename, MediaType.APPLICATION_OCTET_STREAM);
             }
-            if (processedImageBytes.size() == 0) {
-                throw new IllegalArgumentException("No images detected");
+            if (processedImageBytes.isEmpty()) {
+                throw ExceptionUtils.createIllegalArgumentException(
+                        "error.noContent", "No {0} detected", "images");
             } else {
 
                 // Return the processed image as a response
                 byte[] imageBytes = processedImageBytes.get(0);
                 return WebResponseUtils.bytesToWebResponse(
                         imageBytes,
-                        fileName.replaceFirst(REPLACEFIRST, "") + ".png",
+                        GeneralUtils.generateFilename(fileName, ".png"),
                         MediaType.IMAGE_PNG);
             }
         } finally {
@@ -199,7 +220,7 @@ public class ExtractImageScansController {
                         try {
                             Files.deleteIfExists(path);
                         } catch (IOException e) {
-                            log.error("Failed to delete temporary image file: " + path, e);
+                            log.error("Failed to delete temporary image file: {}", path, e);
                         }
                     });
 
@@ -207,7 +228,7 @@ public class ExtractImageScansController {
                 try {
                     Files.deleteIfExists(tempZipFile);
                 } catch (IOException e) {
-                    log.error("Failed to delete temporary zip file: " + tempZipFile, e);
+                    log.error("Failed to delete temporary zip file: {}", tempZipFile, e);
                 }
             }
 
@@ -216,7 +237,7 @@ public class ExtractImageScansController {
                         try {
                             FileUtils.deleteDirectory(dir.toFile());
                         } catch (IOException e) {
-                            log.error("Failed to delete temporary directory: " + dir, e);
+                            log.error("Failed to delete temporary directory: {}", dir, e);
                         }
                     });
         }

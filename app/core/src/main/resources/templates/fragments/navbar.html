@@ -49,6 +49,9 @@
     const updateBreakingChanges = /*[[#{update.breakingChanges}]]*/ 'Breaking Changes:';
     const updateBreakingChangesDefault = /*[[#{update.breakingChangesDefault}]]*/ 'This version contains breaking changes';
     const updateMigrationGuide = /*[[#{update.migrationGuide}]]*/ 'Migration Guide';
+
+    // PDF.js path
+    const pdfjsPath = /*[[@{'/pdfjs-legacy/'}]]*/ './pdfjs-legacy/';
   </script>
   <script th:src="@{'/js/homecard.js'}"></script>
   <script th:src="@{'/js/githubVersion.js'}"></script>
@@ -289,11 +292,11 @@
             <span id="zipThresholdValue" class="ms-2"></span>
           </div>
           <div class="form-check mb-3">
-            <input type="checkbox" id="boredWaiting" th:title="#{settings.bored.help}">
+            <input id="boredWaiting" th:title="#{settings.bored.help}" type="checkbox">
             <label for="boredWaiting" th:text="#{bored}"></label>
           </div>
           <div class="form-check mb-3">
-            <input type="checkbox" id="cacheInputs" th:title="#{settings.cacheInputs.help}">
+            <input id="cacheInputs" th:title="#{settings.cacheInputs.help}" type="checkbox">
             <label for="cacheInputs" th:text="#{settings.cacheInputs.name}"></label>
           </div>
 

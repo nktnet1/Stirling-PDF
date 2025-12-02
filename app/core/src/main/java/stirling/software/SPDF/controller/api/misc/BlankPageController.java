@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -30,7 +31,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import stirling.software.SPDF.model.api.misc.RemoveBlankPagesRequest;
+import stirling.software.common.model.ApplicationProperties;
 import stirling.software.common.service.CustomPDFDocumentFactory;
+import stirling.software.common.util.ApplicationContextProvider;
+import stirling.software.common.util.ExceptionUtils;
+import stirling.software.common.util.GeneralUtils;
 import stirling.software.common.util.PdfUtils;
 import stirling.software.common.util.WebResponseUtils;
 
@@ -64,7 +69,11 @@ public class BlankPageController {
         }
 
         double whitePixelPercentage = (whitePixels / (double) totalPixels) * 100;
-        log.info(String.format("Page has white pixel percent of %.2f%%", whitePixelPercentage));
+        log.info(
+                String.format(
+                        Locale.ROOT,
+                        "Page has white pixel percent of %.2f%%",
+                        whitePixelPercentage));
 
         return whitePixelPercentage >= whitePercent;
     }
@@ -108,7 +117,25 @@ public class BlankPageController {
                     if (hasImages) {
                         log.info("page {} has image, running blank detection", pageIndex);
                         // Render image and save as temp file
-                        BufferedImage image = pdfRenderer.renderImageWithDPI(pageIndex, 30);
+                        BufferedImage image;
+
+                        // Use global maximum DPI setting
+                        int renderDpi = 30; // Default fallback
+                        ApplicationProperties properties =
+                                ApplicationContextProvider.getBean(ApplicationProperties.class);
+                        if (properties != null && properties.getSystem() != null) {
+                            renderDpi = properties.getSystem().getMaxDPI();
+                        }
+                        final int dpi = renderDpi;
+                        final int currentPageIndex = pageIndex;
+
+                        image =
+                                ExceptionUtils.handleOomRendering(
+                                        currentPageIndex + 1,
+                                        dpi,
+                                        () ->
+                                                pdfRenderer.renderImageWithDPI(
+                                                        currentPageIndex, dpi));
                         blank = isBlankImage(image, threshold, whitePercent, threshold);
                     }
                 }
@@ -128,8 +155,8 @@ public class BlankPageController {
             ZipOutputStream zos = new ZipOutputStream(baos);
 
             String filename =
-                    Filenames.toSimpleFileName(inputFile.getOriginalFilename())
-                            .replaceFirst("[.][^.]+$", "");
+                    GeneralUtils.removeExtension(
+                            Filenames.toSimpleFileName(inputFile.getOriginalFilename()));
 
             if (!nonBlankPages.isEmpty()) {
                 createZipEntry(zos, nonBlankPages, filename + "_nonBlankPages.pdf");
@@ -147,6 +174,8 @@ public class BlankPageController {
             return WebResponseUtils.baosToWebResponse(
                     baos, filename + "_processed.zip", MediaType.APPLICATION_OCTET_STREAM);
 
+        } catch (ExceptionUtils.OutOfMemoryDpiException e) {
+            throw e;
         } catch (IOException e) {
             log.error("exception", e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +32,7 @@ import stirling.software.common.model.ApplicationProperties;
 import stirling.software.common.model.enumeration.Role;
 import stirling.software.common.model.exception.UnsupportedProviderException;
 import stirling.software.common.service.UserServiceInterface;
+import stirling.software.common.util.RegexPatternUtils;
 import stirling.software.proprietary.model.Team;
 import stirling.software.proprietary.security.database.repository.AuthorityRepository;
 import stirling.software.proprietary.security.database.repository.UserRepository;
@@ -117,6 +119,7 @@ public class UserService implements UserServiceInterface {
         return addApiKeyToUser(username);
     }
 
+    @Override
     public String getApiKeyForUser(String username) {
         User user =
                 findByUsernameIgnoreCase(username)
@@ -480,18 +483,24 @@ public class UserService implements UserServiceInterface {
         // Checks whether the simple username is formatted correctly
         // Regular expression for user name: Min. 3 characters, max. 50 characters
         boolean isValidSimpleUsername =
-                username.matches("^[a-zA-Z0-9](?!.*[-@._+]{2,})[a-zA-Z0-9@._+-]{1,48}[a-zA-Z0-9]$");
+                RegexPatternUtils.getInstance()
+                        .getUsernameValidationPattern()
+                        .matcher(username)
+                        .matches();
 
         // Checks whether the email address is formatted correctly
         // Regular expression for email addresses: Max. 320 characters, with RFC-like validation
         boolean isValidEmail =
-                username.matches(
-                        "^(?=.{1,320}$)(?=.{1,64}@)[A-Za-z0-9](?:[A-Za-z0-9_.+-]*[A-Za-z0-9])?@[^-][A-Za-z0-9-]+(?:\\\\.[A-Za-z0-9-]+)*(?:\\\\.[A-Za-z]{2,})$");
+                RegexPatternUtils.getInstance()
+                        .getEmailValidationPattern()
+                        .matcher(username)
+                        .matches();
 
         List<String> notAllowedUserList = new ArrayList<>();
-        notAllowedUserList.add("ALL_USERS".toLowerCase());
+        notAllowedUserList.add("ALL_USERS".toLowerCase(Locale.ROOT));
         notAllowedUserList.add("anonymoususer");
-        boolean notAllowedUser = notAllowedUserList.contains(username.toLowerCase());
+        String normalizedUsername = username.toLowerCase(Locale.ROOT);
+        boolean notAllowedUser = notAllowedUserList.contains(normalizedUsername);
         return (isValidSimpleUsername || isValidEmail) && !notAllowedUser;
     }
 
@@ -539,6 +548,7 @@ public class UserService implements UserServiceInterface {
         }
     }
 
+    @Override
     public String getCurrentUsername() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
@@ -595,6 +605,7 @@ public class UserService implements UserServiceInterface {
         }
     }
 
+    @Override
     public long getTotalUsersCount() {
         // Count all users in the database
         long userCount = userRepository.count();

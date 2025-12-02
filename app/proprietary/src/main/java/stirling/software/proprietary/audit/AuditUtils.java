@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -25,6 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.extern.slf4j.Slf4j;
 
+import stirling.software.common.util.RegexPatternUtils;
 import stirling.software.common.util.RequestUriUtils;
 import stirling.software.proprietary.config.AuditConfigurationProperties;
 
@@ -306,8 +308,8 @@ public class AuditUtils {
 
         // For HTTP methods, infer based on controller and path
         if (httpMethod != null && path != null) {
-            String cls = controller.getSimpleName().toLowerCase();
-            String pkg = controller.getPackage().getName().toLowerCase();
+            String cls = controller.getSimpleName().toLowerCase(Locale.ROOT);
+            String pkg = controller.getPackage().getName().toLowerCase(Locale.ROOT);
 
             if ("GET".equals(httpMethod)) return AuditEventType.HTTP_REQUEST;
 
@@ -323,7 +325,10 @@ public class AuditUtils {
                 return AuditEventType.SETTINGS_CHANGED;
             } else if (cls.contains("file")
                     || path.startsWith("/file")
-                    || path.matches("(?i).*/(upload|download)/.*")) {
+                    || RegexPatternUtils.getInstance()
+                            .getUploadDownloadPathPattern()
+                            .matcher(path)
+                            .matches()) {
                 return AuditEventType.FILE_OPERATION;
             }
         }
@@ -370,8 +375,8 @@ public class AuditUtils {
         }
 
         // Otherwise infer from controller and path
-        String cls = controller.getSimpleName().toLowerCase();
-        String pkg = controller.getPackage().getName().toLowerCase();
+        String cls = controller.getSimpleName().toLowerCase(Locale.ROOT);
+        String pkg = controller.getPackage().getName().toLowerCase(Locale.ROOT);
 
         if ("GET".equals(httpMethod)) return AuditEventType.HTTP_REQUEST;
 
@@ -387,7 +392,10 @@ public class AuditUtils {
             return AuditEventType.SETTINGS_CHANGED;
         } else if (cls.contains("file")
                 || path.startsWith("/file")
-                || path.matches("(?i).*/(upload|download)/.*")) {
+                || RegexPatternUtils.getInstance()
+                        .getUploadDownloadPathPattern()
+                        .matcher(path)
+                        .matches()) {
             return AuditEventType.FILE_OPERATION;
         } else {
             return AuditEventType.PDF_PROCESS;

@@ -7,7 +7,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 import javax.imageio.ImageIO;
 
@@ -35,7 +39,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import io.github.pixee.security.Filenames;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -43,6 +46,9 @@ import lombok.RequiredArgsConstructor;
 
 import stirling.software.SPDF.model.api.misc.AddStampRequest;
 import stirling.software.common.service.CustomPDFDocumentFactory;
+import stirling.software.common.util.ExceptionUtils;
+import stirling.software.common.util.GeneralUtils;
+import stirling.software.common.util.RegexPatternUtils;
 import stirling.software.common.util.TempFile;
 import stirling.software.common.util.TempFileManager;
 import stirling.software.common.util.WebResponseUtils;
@@ -85,7 +91,8 @@ public class StampController {
         MultipartFile pdfFile = request.getFileInput();
         String pdfFileName = pdfFile.getOriginalFilename();
         if (pdfFileName.contains("..") || pdfFileName.startsWith("/")) {
-            throw new IllegalArgumentException("Invalid PDF file path");
+            throw ExceptionUtils.createIllegalArgumentException(
+                    "error.invalid.filepath", "Invalid PDF file path: " + pdfFileName);
         }
 
         String stampType = request.getStampType();
@@ -93,14 +100,19 @@ public class StampController {
         MultipartFile stampImage = request.getStampImage();
         if ("image".equalsIgnoreCase(stampType)) {
             if (stampImage == null) {
-                throw new IllegalArgumentException(
+                throw ExceptionUtils.createIllegalArgumentException(
+                        "error.stamp.image.required",
                         "Stamp image file must be provided when stamp type is 'image'");
             }
             String stampImageName = stampImage.getOriginalFilename();
             if (stampImageName == null
                     || stampImageName.contains("..")
                     || stampImageName.startsWith("/")) {
-                throw new IllegalArgumentException("Invalid stamp image file path");
+                throw ExceptionUtils.createIllegalArgumentException(
+                        "error.invalidFormat",
+                        "Invalid {0} format: {1}",
+                        "stamp image file path",
+                        stampImageName);
             }
         }
         String alphabet = request.getAlphabet();
@@ -113,7 +125,7 @@ public class StampController {
 
         String customColor = request.getCustomColor();
         float marginFactor =
-                switch (request.getCustomMargin().toLowerCase()) {
+                switch (request.getCustomMargin().toLowerCase(Locale.ROOT)) {
                     case "small" -> 0.02f;
                     case "medium" -> 0.035f;
                     case "large" -> 0.05f;
@@ -172,11 +184,10 @@ public class StampController {
                 contentStream.close();
             }
         }
+        // Return the stamped PDF as a response
         return WebResponseUtils.pdfDocToWebResponse(
                 document,
-                Filenames.toSimpleFileName(pdfFile.getOriginalFilename())
-                                .replaceFirst("[.][^.]+$", "")
-                        + "_stamped.pdf");
+                GeneralUtils.generateFilename(pdfFile.getOriginalFilename(), "_stamped.pdf"));
     }
 
     private void addTextStamp(
@@ -193,7 +204,7 @@ public class StampController {
             float margin,
             String colorString) // Y override
             throws IOException {
-        String resourceDir = "";
+        String resourceDir;
         PDFont font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
         resourceDir =
                 switch (alphabet) {
@@ -206,18 +217,16 @@ public class StampController {
                     default -> "static/fonts/NotoSans-Regular.ttf";
                 };
 
-        if (!"".equals(resourceDir)) {
-            ClassPathResource classPathResource = new ClassPathResource(resourceDir);
-            String fileExtension = resourceDir.substring(resourceDir.lastIndexOf("."));
+        ClassPathResource classPathResource = new ClassPathResource(resourceDir);
+        String fileExtension = resourceDir.substring(resourceDir.lastIndexOf("."));
 
-            // Use TempFile with try-with-resources for automatic cleanup
-            try (TempFile tempFileWrapper = new TempFile(tempFileManager, fileExtension)) {
-                File tempFile = tempFileWrapper.getFile();
-                try (InputStream is = classPathResource.getInputStream();
-                        FileOutputStream os = new FileOutputStream(tempFile)) {
-                    IOUtils.copy(is, os);
-                    font = PDType0Font.load(document, tempFile);
-                }
+        // Use TempFile with try-with-resources for automatic cleanup
+        try (TempFile tempFileWrapper = new TempFile(tempFileManager, fileExtension)) {
+            File tempFile = tempFileWrapper.getFile();
+            try (InputStream is = classPathResource.getInputStream();
+                    FileOutputStream os = new FileOutputStream(tempFile)) {
+                IOUtils.copy(is, os);
+                font = PDType0Font.load(document, tempFile);
             }
         }
 
@@ -249,8 +258,21 @@ public class StampController {
                     calculatePositionY(
                             pageSize, position, calculateTextCapHeight(font, fontSize), margin);
         }
+
+        String currentDate = LocalDate.now().toString();
+        String currentTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+
+        int pageCount = document.getNumberOfPages();
+
+        String processedStampText =
+                stampText
+                        .replace("@date", currentDate)
+                        .replace("@time", currentTime)
+                        .replace("@page_count", String.valueOf(pageCount));
+
         // Split the stampText into multiple lines
-        String[] lines = stampText.split("\\\\n");
+        String[] lines =
+                RegexPatternUtils.getInstance().getEscapedNewlinePattern().split(stampText);
 
         // Calculate dynamic line height based on font ascent and descent
         float ascent = font.getFontDescriptor().getAscent();

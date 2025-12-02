@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -32,8 +33,11 @@ import stirling.software.common.configuration.RuntimePathConfig;
 import stirling.software.common.model.api.GeneralFile;
 import stirling.software.common.service.CustomPDFDocumentFactory;
 import stirling.software.common.util.CustomHtmlSanitizer;
+import stirling.software.common.util.ExceptionUtils;
+import stirling.software.common.util.GeneralUtils;
 import stirling.software.common.util.ProcessExecutor;
 import stirling.software.common.util.ProcessExecutor.ProcessExecutorResult;
+import stirling.software.common.util.RegexPatternUtils;
 import stirling.software.common.util.WebResponseUtils;
 
 @RestController
@@ -57,15 +61,16 @@ public class ConvertOfficeController {
         // Check for valid file extension and sanitize filename
         String originalFilename = Filenames.toSimpleFileName(inputFile.getOriginalFilename());
         if (originalFilename == null || originalFilename.isBlank()) {
-            throw new IllegalArgumentException("Missing original filename");
+            throw ExceptionUtils.createFileNoNameException();
         }
 
         // Check for valid file extension
         String extension = FilenameUtils.getExtension(originalFilename);
         if (extension == null || !isValidFileExtension(extension)) {
-            throw new IllegalArgumentException("Invalid file extension");
+            throw ExceptionUtils.createIllegalArgumentException(
+                    "error.invalid.extension", "Invalid file extension: " + extension);
         }
-        String extensionLower = extension.toLowerCase();
+        String extensionLower = extension.toLowerCase(Locale.ROOT);
 
         String baseName = FilenameUtils.getBaseName(originalFilename);
         if (baseName == null || baseName.isBlank()) {
@@ -88,6 +93,7 @@ public class ConvertOfficeController {
             Files.copy(inputFile.getInputStream(), inputPath, StandardCopyOption.REPLACE_EXISTING);
         }
 
+        Path libreOfficeProfile = null;
         try {
             ProcessExecutorResult result;
             // Run Unoconvert command
@@ -107,8 +113,10 @@ public class ConvertOfficeController {
                                 .runCommandWithOutputHandling(command);
             } // Run soffice command
             else {
+                libreOfficeProfile = Files.createTempDirectory("libreoffice_profile_");
                 List<String> command = new ArrayList<>();
-                command.add("soffice");
+                command.add(runtimePathConfig.getSOfficePath());
+                command.add("-env:UserInstallation=" + libreOfficeProfile.toUri().toString());
                 command.add("--headless");
                 command.add("--nologo");
                 command.add("--convert-to");
@@ -139,7 +147,7 @@ public class ConvertOfficeController {
                                             p ->
                                                     p.getFileName()
                                                             .toString()
-                                                            .toLowerCase()
+                                                            .toLowerCase(Locale.ROOT)
                                                             .endsWith(".pdf"))
                                     .findFirst()
                                     .orElse(null);
@@ -164,12 +172,17 @@ public class ConvertOfficeController {
             } catch (IOException e) {
                 log.warn("Failed to delete temp input file: {}", inputPath, e);
             }
+            if (libreOfficeProfile != null) {
+                FileUtils.deleteQuietly(libreOfficeProfile.toFile());
+            }
         }
     }
 
     private boolean isValidFileExtension(String fileExtension) {
-        String extensionPattern = "^(?i)[a-z0-9]{2,4}$";
-        return fileExtension.matches(extensionPattern);
+        return RegexPatternUtils.getInstance()
+                .getFileExtensionValidationPattern()
+                .matcher(fileExtension)
+                .matches();
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, value = "/file/pdf")
@@ -190,9 +203,8 @@ public class ConvertOfficeController {
             PDDocument doc = pdfDocumentFactory.load(file);
             return WebResponseUtils.pdfDocToWebResponse(
                     doc,
-                    Filenames.toSimpleFileName(inputFile.getOriginalFilename())
-                                    .replaceFirst("[.][^.]+$", "")
-                            + "_convertedToPDF.pdf");
+                    GeneralUtils.generateFilename(
+                            inputFile.getOriginalFilename(), "_convertedToPDF.pdf"));
         } finally {
             if (file != null && file.getParent() != null) {
                 FileUtils.deleteDirectory(file.getParentFile());

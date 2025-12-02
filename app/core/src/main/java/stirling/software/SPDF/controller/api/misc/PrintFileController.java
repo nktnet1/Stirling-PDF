@@ -9,6 +9,7 @@ import java.awt.print.PrinterJob;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Locale;
 
 import javax.imageio.ImageIO;
 import javax.print.PrintService;
@@ -30,6 +31,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 
 import stirling.software.SPDF.model.api.misc.PrintFileRequest;
+import stirling.software.common.util.ExceptionUtils;
 
 @RestController
 @RequestMapping("/api/v1/misc")
@@ -50,25 +52,29 @@ public class PrintFileController {
         String originalFilename = file.getOriginalFilename();
         if (originalFilename != null
                 && (originalFilename.contains("..") || Paths.get(originalFilename).isAbsolute())) {
-            throw new IOException("Invalid file path detected: " + originalFilename);
+            throw ExceptionUtils.createIllegalArgumentException(
+                    "error.invalid.filepath", "Invalid file path detected: " + originalFilename);
         }
         String printerName = request.getPrinterName();
         String contentType = file.getContentType();
         try {
             // Find matching printer
             PrintService[] services = PrintServiceLookup.lookupPrintServices(null, null);
+            String normalizedPrinterName = printerName.toLowerCase(Locale.ROOT);
             PrintService selectedService =
                     Arrays.stream(services)
                             .filter(
                                     service ->
-                                            service.getName().toLowerCase().contains(printerName))
+                                            service.getName()
+                                                    .toLowerCase(Locale.ROOT)
+                                                    .contains(normalizedPrinterName))
                             .findFirst()
                             .orElseThrow(
                                     () ->
                                             new IllegalArgumentException(
                                                     "No matching printer found"));
 
-            log.info("Selected Printer: " + selectedService.getName());
+            log.info("Selected Printer: {}", selectedService.getName());
 
             if (MediaType.APPLICATION_PDF_VALUE.equals(contentType)) {
                 PDDocument document = Loader.loadPDF(file.getBytes());

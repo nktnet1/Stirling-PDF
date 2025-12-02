@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -73,11 +74,11 @@ public class ApplicationProperties {
     public PropertySource<?> dynamicYamlPropertySource(ConfigurableEnvironment environment)
             throws IOException {
         String configPath = InstallationPathConfig.getSettingsPath();
-        log.debug("Attempting to load settings from: " + configPath);
+        log.debug("Attempting to load settings from: {}", configPath);
 
         File file = new File(configPath);
         if (!file.exists()) {
-            log.error("Warning: Settings file does not exist at: " + configPath);
+            log.error("Warning: Settings file does not exist at: {}", configPath);
         }
 
         Resource resource = new FileSystemResource(configPath);
@@ -90,7 +91,7 @@ public class ApplicationProperties {
                 new YamlPropertySourceFactory().createPropertySource(null, encodedResource);
         environment.getPropertySources().addFirst(propertySource);
 
-        log.debug("Loaded properties: " + propertySource.getSource());
+        log.debug("Loaded properties: {}", propertySource.getSource());
 
         return propertySource;
     }
@@ -111,8 +112,8 @@ public class ApplicationProperties {
 
     @Data
     public static class Security {
-        private Boolean enableLogin;
-        private Boolean csrfDisabled;
+        private boolean enableLogin;
+        private boolean csrfDisabled;
         private InitialLogin initialLogin = new InitialLogin();
         private OAUTH2 oauth2 = new OAUTH2();
         private SAML2 saml2 = new SAML2();
@@ -286,7 +287,7 @@ public class ApplicationProperties {
                 private KeycloakProvider keycloak = new KeycloakProvider();
 
                 public Provider get(String registrationId) throws UnsupportedProviderException {
-                    return switch (registrationId.toLowerCase()) {
+                    return switch (registrationId.toLowerCase(Locale.ROOT)) {
                         case "google" -> getGoogle();
                         case "github" -> getGithub();
                         case "keycloak" -> getKeycloak();
@@ -294,8 +295,8 @@ public class ApplicationProperties {
                                 throw new UnsupportedProviderException(
                                         "Logout from the provider "
                                                 + registrationId
-                                                + " is not supported. "
-                                                + "Report it at https://github.com/Stirling-Tools/Stirling-PDF/issues");
+                                                + " is not supported. Report it at"
+                                                + " https://github.com/Stirling-Tools/Stirling-PDF/issues");
                     };
                 }
             }
@@ -303,28 +304,29 @@ public class ApplicationProperties {
 
         @Data
         public static class Jwt {
-            private boolean enableKeystore = true;
-            private boolean enableKeyRotation = false;
-            private boolean enableKeyCleanup = true;
+            private boolean enabled = true;
+            private boolean keyCleanup = true;
             private int keyRetentionDays = 7;
-            private boolean secureCookie;
+            private Boolean secureCookie;
         }
     }
 
     @Data
     public static class System {
         private String defaultLocale;
-        private Boolean googlevisibility;
+        private boolean googlevisibility;
         private boolean showUpdate;
-        private Boolean showUpdateOnlyAdmin;
+        private boolean showUpdateOnlyAdmin;
         private boolean customHTMLFiles;
         private String tessdataDir;
-        private Boolean enableAlphaFunctionality;
+        private boolean enableAlphaFunctionality;
         private Boolean enableAnalytics;
+        private Boolean enablePosthog;
+        private Boolean enableScarf;
         private Datasource datasource;
-        private Boolean disableSanitize;
+        private boolean disableSanitize;
         private int maxDPI;
-        private Boolean enableUrlToPDF;
+        private boolean enableUrlToPDF;
         private Html html = new Html();
         private CustomPaths customPaths = new CustomPaths();
         private String fileUploadLimit;
@@ -333,6 +335,18 @@ public class ApplicationProperties {
 
         public boolean isAnalyticsEnabled() {
             return this.getEnableAnalytics() != null && this.getEnableAnalytics();
+        }
+
+        public boolean isPosthogEnabled() {
+            // Treat null as enabled when analytics is enabled
+            return this.isAnalyticsEnabled()
+                    && (this.getEnablePosthog() == null || this.getEnablePosthog());
+        }
+
+        public boolean isScarfEnabled() {
+            // Treat null as enabled when analytics is enabled
+            return this.isAnalyticsEnabled()
+                    && (this.getEnableScarf() == null || this.getEnableScarf());
         }
     }
 
@@ -357,6 +371,9 @@ public class ApplicationProperties {
         public static class Operations {
             private String weasyprint;
             private String unoconvert;
+            private String calibre;
+            private String ocrmypdf;
+            private String soffice;
         }
     }
 
@@ -377,16 +394,19 @@ public class ApplicationProperties {
 
         @JsonIgnore
         public String getBaseTmpDir() {
-            return baseTmpDir != null && !baseTmpDir.isEmpty()
-                    ? baseTmpDir
-                    : java.lang.System.getProperty("java.io.tmpdir") + "/stirling-pdf";
+            if (baseTmpDir != null && !baseTmpDir.isEmpty()) {
+                return baseTmpDir;
+            }
+            String tmp = java.lang.System.getProperty("java.io.tmpdir");
+            return new File(tmp, "stirling-pdf").getPath();
         }
 
         @JsonIgnore
         public String getLibreofficeDir() {
-            return libreofficeDir != null && !libreofficeDir.isEmpty()
-                    ? libreofficeDir
-                    : getBaseTmpDir() + "/libreoffice";
+            if (libreofficeDir != null && !libreofficeDir.isEmpty()) {
+                return libreofficeDir;
+            }
+            return new File(getBaseTmpDir(), "libreoffice").getPath();
         }
     }
 
@@ -436,10 +456,10 @@ public class ApplicationProperties {
         @Override
         public String toString() {
             return """
-                Driver {
-                  driverName='%s'
-                }
-                """
+      Driver {
+        driverName='%s'
+      }
+      """
                     .formatted(driverName);
         }
     }
@@ -452,19 +472,17 @@ public class ApplicationProperties {
         private List<String> languages;
 
         public String getAppName() {
-            return appName != null && appName.trim().length() > 0 ? appName : null;
+            return appName != null && !appName.trim().isEmpty() ? appName : null;
         }
 
         public String getHomeDescription() {
-            return homeDescription != null && homeDescription.trim().length() > 0
+            return homeDescription != null && !homeDescription.trim().isEmpty()
                     ? homeDescription
                     : null;
         }
 
         public String getAppNameNavbar() {
-            return appNameNavbar != null && appNameNavbar.trim().length() > 0
-                    ? appNameNavbar
-                    : null;
+            return appNameNavbar != null && !appNameNavbar.trim().isEmpty() ? appNameNavbar : null;
         }
     }
 
@@ -476,7 +494,7 @@ public class ApplicationProperties {
 
     @Data
     public static class Metrics {
-        private Boolean enabled;
+        private boolean enabled;
     }
 
     @Data
@@ -581,6 +599,25 @@ public class ApplicationProperties {
         public static class EnterpriseFeatures {
             private PersistentMetrics persistentMetrics = new PersistentMetrics();
             private Audit audit = new Audit();
+            private DatabaseNotifications databaseNotifications = new DatabaseNotifications();
+
+            @Data
+            public static class DatabaseNotifications {
+                private Backup backups = new Backup();
+                private Imports imports = new Imports();
+
+                @Data
+                public static class Backup {
+                    private boolean successful = false;
+                    private boolean failed = false;
+                }
+
+                @Data
+                public static class Imports {
+                    private boolean successful = false;
+                    private boolean failed = false;
+                }
+            }
 
             @Data
             public static class Audit {
@@ -614,6 +651,7 @@ public class ApplicationProperties {
             private int tesseractSessionLimit;
             private int ghostscriptSessionLimit;
             private int ocrMyPdfSessionLimit;
+            private int ffmpegSessionLimit;
 
             public int getQpdfSessionLimit() {
                 return qpdfSessionLimit > 0 ? qpdfSessionLimit : 2;
@@ -654,6 +692,10 @@ public class ApplicationProperties {
             public int getOcrMyPdfSessionLimit() {
                 return ocrMyPdfSessionLimit > 0 ? ocrMyPdfSessionLimit : 2;
             }
+
+            public int getFfmpegSessionLimit() {
+                return ffmpegSessionLimit > 0 ? ffmpegSessionLimit : 2;
+            }
         }
 
         @Data
@@ -680,6 +722,7 @@ public class ApplicationProperties {
             private long qpdfTimeoutMinutes;
             private long ghostscriptTimeoutMinutes;
             private long ocrMyPdfTimeoutMinutes;
+            private long ffmpegTimeoutMinutes;
 
             public long getTesseractTimeoutMinutes() {
                 return tesseractTimeoutMinutes > 0 ? tesseractTimeoutMinutes : 30;
@@ -719,6 +762,10 @@ public class ApplicationProperties {
 
             public long getOcrMyPdfTimeoutMinutes() {
                 return ocrMyPdfTimeoutMinutes > 0 ? ocrMyPdfTimeoutMinutes : 30;
+            }
+
+            public long getFfmpegTimeoutMinutes() {
+                return ffmpegTimeoutMinutes > 0 ? ffmpegTimeoutMinutes : 30;
             }
         }
     }

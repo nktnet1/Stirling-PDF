@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 import org.thymeleaf.util.StringUtils;
@@ -15,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import stirling.software.SPDF.model.SignatureFile;
 import stirling.software.common.configuration.InstallationPathConfig;
+import stirling.software.common.util.ExceptionUtils;
 
 @Service
 @Slf4j
@@ -66,10 +69,11 @@ public class SignatureService {
 
     private List<SignatureFile> getSignaturesFromFolder(Path folder, String category)
             throws IOException {
-        return Files.list(folder)
-                .filter(path -> isImageFile(path))
-                .map(path -> new SignatureFile(path.getFileName().toString(), category))
-                .toList();
+        try (Stream<Path> stream = Files.list(folder)) {
+            return stream.filter(this::isImageFile)
+                    .map(path -> new SignatureFile(path.getFileName().toString(), category))
+                    .toList();
+        }
     }
 
     public byte[] getSignatureBytes(String username, String fileName) throws IOException {
@@ -90,16 +94,18 @@ public class SignatureService {
     }
 
     private boolean isImageFile(Path path) {
-        String fileName = path.getFileName().toString().toLowerCase();
+        String fileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
         return fileName.endsWith(".jpg")
                 || fileName.endsWith(".jpeg")
                 || fileName.endsWith(".png")
-                || fileName.endsWith(".gif");
+                || fileName.endsWith(".gif")
+                || fileName.endsWith(".svg");
     }
 
     private void validateFileName(String fileName) {
         if (fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
-            throw new IllegalArgumentException("Invalid filename");
+            throw ExceptionUtils.createIllegalArgumentException(
+                    "error.invalidFormat", "Invalid {0} format: {1}", "filename", fileName);
         }
     }
 }
